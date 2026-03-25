@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "storefront",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "storefront"],
+      "port": 8000,
+      "autoPort": true
+    }
+  ]
+}

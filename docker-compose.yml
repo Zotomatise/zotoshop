@@ -1,0 +1,101 @@
+###############################################
+# ZotoShop — docker-compose.yml
+# Application e-commerce de test — Zotomatise Labs
+#
+# Usage:
+#   docker compose up          → lance tout
+#   docker compose up -d       → lance en arrière-plan
+#   docker compose down        → arrête tout
+#   docker compose down -v     → arrête + supprime les données
+#
+# URLs:
+#   Storefront  → http://localhost:8000
+#   API         → http://localhost:9000
+#   Admin       → http://localhost:9000/app
+#   PostgreSQL  → localhost:5432
+#   Redis       → localhost:6379
+###############################################
+
+services:
+  # ─── Base de données PostgreSQL ───────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: zotoshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zotoshop
+      POSTGRES_PASSWORD: zotoshop
+      POSTGRES_DB: zotoshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - zotoshop_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zotoshop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (cache & events) ──────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: zotoshop-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend Medusa (API + Admin) ────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zotoshop-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://zotoshop:zotoshop@postgres:5432/zotoshop?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      STORE_CORS: http://localhost:8000,http://localhost:3000
+      ADMIN_CORS: http://localhost:5173,http://localhost:9000
+      AUTH_CORS: http://localhost:5173,http://localhost:9000,http://localhost:8000,http://localhost:3000
+      JWT_SECRET: zotoshop-jwt-secret-2026
+      COOKIE_SECRET: zotoshop-cookie-secret-2026
+      NODE_ENV: development
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./backend/src:/app/src
+
+  # ─── Frontend Next.js (Storefront) ───────────────
+  storefront:
+    build:
+      context: ./storefront
+      dockerfile: Dockerfile
+    container_name: zotoshop-front
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      MEDUSA_BACKEND_URL: http://backend:9000
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_67ca30d828fcd266b9f6ac6f89e77240603030d4ed5a3220037d84ea1c34e387
+      NEXT_PUBLIC_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_DEFAULT_REGION: fr
+      REVALIDATE_SECRET: zotoshop-revalidate-secret
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storefront/src:/app/src
+      - ./storefront/tailwind.config.js:/app/tailwind.config.js
+      - ./storefront/next.config.js:/app/next.config.js
+
+volumes:
+  zotoshop_pgdata:
