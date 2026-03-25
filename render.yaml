@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: zotoshop-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile.prod
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        value: zotoshop-jwt-secret-prod-2026
+      - key: COOKIE_SECRET
+        value: zotoshop-cookie-secret-prod-2026
+      - key: NODE_ENV
+        value: production
+      - key: STORE_CORS
+        sync: false
+      - key: ADMIN_CORS
+        sync: false
+      - key: AUTH_CORS
+        sync: false
