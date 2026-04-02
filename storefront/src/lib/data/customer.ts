@@ -14,6 +14,17 @@ import {
   removeCartId,
   setAuthToken,
 } from "./cookies"
+import { cookies } from "next/headers"
+
+const TEST_USER_COOKIE = "_zoto_test_user"
+
+const TEST_USER_MAP: Record<string, string> = {
+  "standard_user@zotoshop.com": "standard",
+  "locked_out_user@zotoshop.com": "locked_out",
+  "slow_user@zotoshop.com": "slow",
+  "error_user@zotoshop.com": "error",
+  "visual_user@zotoshop.com": "visual",
+}
 
 export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
@@ -108,6 +119,11 @@ export async function login(_currentState: unknown, formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
+  // Intercept locked_out_user — block before hitting Medusa
+  if (email.toLowerCase() === "locked_out_user@zotoshop.com") {
+    return "Ce compte est bloqué. Contactez le support."
+  }
+
   try {
     await sdk.auth
       .login("customer", "emailpass", { email, password })
@@ -117,7 +133,18 @@ export async function login(_currentState: unknown, formData: FormData) {
         revalidateTag(customerCacheTag)
       })
   } catch (error: any) {
-    return error.toString()
+    return "Email ou mot de passe incorrect."
+  }
+
+  // Set test user cookie if applicable
+  const testUserType = TEST_USER_MAP[email.toLowerCase()]
+  if (testUserType) {
+    const cookieStore = await cookies()
+    cookieStore.set(TEST_USER_COOKIE, testUserType, {
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+      sameSite: "lax",
+    })
   }
 
   try {
@@ -131,6 +158,10 @@ export async function signout(countryCode: string) {
   await sdk.auth.logout()
 
   await removeAuthToken()
+
+  // Clear test user cookie
+  const cookieStore = await cookies()
+  cookieStore.set(TEST_USER_COOKIE, "", { maxAge: 0, path: "/" })
 
   const customerCacheTag = await getCacheTag("customers")
   revalidateTag(customerCacheTag)

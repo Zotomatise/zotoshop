@@ -110,3 +110,45 @@
     @apply text-[32px] leading-[44px] font-semibold;
   }
 }
+
+/* ============================================
+   VISUAL USER BUGS — QA Training
+   Activated when data-visual-bugs="true" on body
+   ============================================ */
+
+[data-visual-bugs="true"] nav a[href*="store"] {
+  transform: rotate(2deg);
+}
+
+[data-visual-bugs="true"] [data-testid="product-price"] {
+  margin-left: 20px;
+  color: #999;
+}
+
+[data-visual-bugs="true"] [data-testid="add-product-button"] {
+  opacity: 0.3;
+}
+
+[data-visual-bugs="true"] ul li:nth-child(even) img {
+  visibility: hidden;
+}
+
+[data-visual-bugs="true"] footer {
+  position: relative;
+  z-index: 50;
+  margin-top: -60px;
+}
+
+[data-visual-bugs="true"] h1 {
+  font-family: "Comic Sans MS", "Comic Sans", cursive !important;
+  letter-spacing: 2px;
+}
+
+[data-visual-bugs="true"] [data-testid="nav-store-link"] {
+  transform: skewX(-5deg);
+}
+
+[data-visual-bugs="true"] button[type="submit"] {
+  position: relative;
+  left: 15px;
+}

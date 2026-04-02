@@ -31,23 +31,43 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
     )
   }
 
+  // Fake promo codes intercepted before API call (QA training)
+  const FAKE_PROMO_CODES: Record<string, { error: boolean; message: string }> = {
+    EXPIRED: { error: true, message: "Ce code promo a expiré." },
+    INVALID: { error: true, message: "Code promo invalide." },
+    FREESHIP: { error: false, message: "Livraison offerte appliquée !" },
+    EMPTY: { error: true, message: "Veuillez saisir un code promo." },
+  }
+
   const addPromotionCode = async (formData: FormData) => {
     setErrorMessage("")
 
     const code = formData.get("code")
     if (!code) {
+      setErrorMessage("Veuillez saisir un code promo.")
       return
     }
+
+    const codeStr = code.toString().toUpperCase().trim()
     const input = document.getElementById("promotion-input") as HTMLInputElement
+
+    // Intercept fake promo codes for QA training
+    const fakeCode = FAKE_PROMO_CODES[codeStr]
+    if (fakeCode) {
+      setErrorMessage(fakeCode.message)
+      if (input) input.value = ""
+      return
+    }
+
     const codes = promotions
       .filter((p) => p.code !== undefined)
       .map((p) => p.code!)
-    codes.push(code.toString())
+    codes.push(codeStr)
 
     try {
       await applyPromotions(codes)
     } catch (e: any) {
-      setErrorMessage(e.message)
+      setErrorMessage("Code promo invalide.")
     }
 
     if (input) {

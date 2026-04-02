@@ -643,4 +643,65 @@ export default async function seedDemoData({ container }: ExecArgs) {
   });
 
   logger.info("Finished seeding inventory levels data.");
+
+  // ============================================
+  // SEED TEST USERS FOR QA TRAINING
+  // ============================================
+  logger.info("Seeding test users for QA training...");
+
+  const authModuleService = container.resolve(Modules.AUTH);
+  const customerModuleService = container.resolve(Modules.CUSTOMER);
+
+  const testUsers = [
+    { email: "standard_user@zotoshop.com", first_name: "Standard", last_name: "User" },
+    { email: "locked_out_user@zotoshop.com", first_name: "Locked", last_name: "User" },
+    { email: "slow_user@zotoshop.com", first_name: "Slow", last_name: "User" },
+    { email: "error_user@zotoshop.com", first_name: "Error", last_name: "User" },
+    { email: "visual_user@zotoshop.com", first_name: "Visual", last_name: "User" },
+  ];
+
+  for (const user of testUsers) {
+    try {
+      // Check if customer already exists
+      const existing = await customerModuleService.listCustomers({ email: user.email });
+      if (existing.length > 0) {
+        logger.info(`Test user ${user.email} already exists, skipping.`);
+        continue;
+      }
+
+      // Create auth identity
+      const authIdentity = await authModuleService.createAuthIdentities({
+        provider_identities: [
+          {
+            provider: "emailpass",
+            entity_id: user.email,
+            provider_metadata: {
+              password: "password123",
+            },
+          },
+        ],
+      });
+
+      // Create customer
+      const customer = await customerModuleService.createCustomers({
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        has_account: true,
+      });
+
+      // Link auth identity to customer
+      const remoteLink = container.resolve(ContainerRegistrationKeys.REMOTE_LINK);
+      await remoteLink.create({
+        [Modules.AUTH]: { auth_identity_id: authIdentity.id },
+        [Modules.CUSTOMER]: { customer_id: customer.id },
+      });
+
+      logger.info(`Created test user: ${user.email}`);
+    } catch (error: any) {
+      logger.info(`Skipping test user ${user.email}: ${error.message}`);
+    }
+  }
+
+  logger.info("Finished seeding test users.");
 }
