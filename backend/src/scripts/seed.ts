@@ -705,46 +705,60 @@ export default async function seedDemoData({ container }: ExecArgs) {
     { email: "visual_user@zotoshop.com", first_name: "Visual", last_name: "User" },
   ];
 
+  const remoteLink = container.resolve(ContainerRegistrationKeys.REMOTE_LINK);
+
   for (const user of testUsers) {
     try {
       // Check if customer already exists
+      let customer: any = null;
       const existing = await customerModuleService.listCustomers({ email: user.email });
       if (existing.length > 0) {
-        logger.info(`Test user ${user.email} already exists, skipping.`);
-        continue;
+        customer = existing[0];
+        logger.info(`Customer ${user.email} already exists (id: ${customer.id}).`);
+      } else {
+        customer = await customerModuleService.createCustomers({
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          has_account: true,
+        });
+        logger.info(`Created customer: ${user.email}`);
       }
 
-      // Create auth identity
-      const authIdentity = await authModuleService.createAuthIdentities({
-        provider_identities: [
-          {
-            provider: "emailpass",
-            entity_id: user.email,
-            provider_metadata: {
-              password: "password123",
+      // Always ensure auth identity exists and is linked
+      try {
+        // Try to authenticate — if it works, auth is already set up
+        await authModuleService.authenticate("emailpass", {
+          body: { email: user.email, password: "password123" },
+        });
+        logger.info(`Auth identity for ${user.email} already works, skipping.`);
+      } catch {
+        // Auth failed — create auth identity and link
+        logger.info(`Creating auth identity for ${user.email}...`);
+        const authIdentity = await authModuleService.createAuthIdentities({
+          provider_identities: [
+            {
+              provider: "emailpass",
+              entity_id: user.email,
+              provider_metadata: {
+                password: "password123",
+              },
             },
-          },
-        ],
-      });
+          ],
+        });
 
-      // Create customer
-      const customer = await customerModuleService.createCustomers({
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        has_account: true,
-      });
-
-      // Link auth identity to customer
-      const remoteLink = container.resolve(ContainerRegistrationKeys.REMOTE_LINK);
-      await remoteLink.create({
-        [Modules.AUTH]: { auth_identity_id: authIdentity.id },
-        [Modules.CUSTOMER]: { customer_id: customer.id },
-      });
-
-      logger.info(`Created test user: ${user.email}`);
+        try {
+          await remoteLink.create({
+            [Modules.AUTH]: { auth_identity_id: authIdentity.id },
+            [Modules.CUSTOMER]: { customer_id: customer.id },
+          });
+        } catch {
+          logger.info(`Link for ${user.email} already exists or failed, continuing.`);
+        }
+        logger.info(`Auth identity created for: ${user.email}`);
+      }
     } catch (error: any) {
-      logger.info(`Skipping test user ${user.email}: ${error.message}`);
+      logger.info(`Error with test user ${user.email}: ${error.message}`);
     }
   }
 
