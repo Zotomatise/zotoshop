@@ -16,6 +16,7 @@ const SideMenuItems = {
   Boutique: "/store",
   Compte: "/account",
   Panier: "/cart",
+  "Guide QA": "/guide",
 }
 
 type SideMenuProps = {
