@@ -725,15 +725,17 @@ export default async function seedDemoData({ container }: ExecArgs) {
         logger.info(`Created customer: ${user.email}`);
       }
 
-      // Always ensure auth identity exists and is linked
-      try {
-        // Try to authenticate — if it works, auth is already set up
-        await authModuleService.authenticate("emailpass", {
-          body: { email: user.email, password: "password123" },
-        });
-        logger.info(`Auth identity for ${user.email} already works, skipping.`);
-      } catch {
-        // Auth failed — create auth identity and link
+      // Ensure auth identity exists
+      let authIdentityId: string | null = null;
+
+      const authResult = await authModuleService.authenticate("emailpass", {
+        body: { email: user.email, password: "password123" },
+      });
+
+      if (authResult.success && authResult.authIdentity) {
+        authIdentityId = authResult.authIdentity.id;
+        logger.info(`Auth identity for ${user.email} already exists (id: ${authIdentityId}).`);
+      } else {
         logger.info(`Creating auth identity for ${user.email}...`);
         const authIdentity = await authModuleService.createAuthIdentities({
           provider_identities: [
@@ -746,16 +748,19 @@ export default async function seedDemoData({ container }: ExecArgs) {
             },
           ],
         });
-
-        try {
-          await remoteLink.create({
-            [Modules.AUTH]: { auth_identity_id: authIdentity.id },
-            [Modules.CUSTOMER]: { customer_id: customer.id },
-          });
-        } catch {
-          logger.info(`Link for ${user.email} already exists or failed, continuing.`);
-        }
+        authIdentityId = authIdentity.id;
         logger.info(`Auth identity created for: ${user.email}`);
+      }
+
+      // Always ensure the auth → customer link exists
+      try {
+        await remoteLink.create({
+          [Modules.AUTH]: { auth_identity_id: authIdentityId },
+          [Modules.CUSTOMER]: { customer_id: customer.id },
+        });
+        logger.info(`Link created: auth(${authIdentityId}) → customer(${customer.id}) for ${user.email}`);
+      } catch {
+        logger.info(`Link for ${user.email} already exists.`);
       }
     } catch (error: any) {
       logger.info(`Error with test user ${user.email}: ${error.message}`);
