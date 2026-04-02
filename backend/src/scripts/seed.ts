@@ -705,8 +705,6 @@ export default async function seedDemoData({ container }: ExecArgs) {
     { email: "visual_user@zotoshop.com", first_name: "Visual", last_name: "User" },
   ];
 
-  const remoteLink = container.resolve(ContainerRegistrationKeys.REMOTE_LINK);
-
   for (const user of testUsers) {
     try {
       // Check if customer already exists
@@ -725,57 +723,38 @@ export default async function seedDemoData({ container }: ExecArgs) {
         logger.info(`Created customer: ${user.email}`);
       }
 
-      // Find existing auth identity via provider identity lookup
-      let authIdentityId: string | null = null;
-
+      // Delete existing auth identity (if any) to recreate cleanly
       try {
         const providerIdentities = await authModuleService.listProviderIdentities({
           entity_id: user.email,
           provider: "emailpass",
         });
-
         if (providerIdentities.length > 0) {
-          authIdentityId = providerIdentities[0].auth_identity_id!;
-          logger.info(`Found existing provider identity for ${user.email}, auth_identity_id: ${authIdentityId}`);
+          const oldAuthId = providerIdentities[0].auth_identity_id!;
+          logger.info(`Deleting old auth identity for ${user.email}: ${oldAuthId}`);
+          await authModuleService.deleteAuthIdentities([oldAuthId]);
         }
       } catch (e: any) {
-        logger.info(`Could not list provider identities for ${user.email}: ${e.message}`);
+        logger.info(`Cleanup for ${user.email}: ${e.message}`);
       }
 
-      if (!authIdentityId) {
-        logger.info(`Creating auth identity for ${user.email}...`);
-        try {
-          const authIdentity = await authModuleService.createAuthIdentities({
-            provider_identities: [
-              {
-                provider: "emailpass",
-                entity_id: user.email,
-                provider_metadata: {
-                  password: "password123",
-                },
-              },
-            ],
-          });
-          authIdentityId = authIdentity.id;
-          logger.info(`Auth identity created for ${user.email}: ${authIdentityId}`);
-        } catch (e: any) {
-          logger.info(`Failed to create auth identity for ${user.email}: ${e.message}`);
-        }
-      }
+      // Register auth identity via emailpass provider (hashes password with scrypt)
+      const registerResult = await authModuleService.register("emailpass", {
+        body: { email: user.email, password: "password123" },
+      });
 
-      // Always ensure the auth → customer link exists
-      if (authIdentityId) {
-        try {
-          await remoteLink.create({
-            [Modules.AUTH]: { auth_identity_id: authIdentityId },
-            [Modules.CUSTOMER]: { customer_id: customer.id },
-          });
-          logger.info(`Link created: auth(${authIdentityId}) → customer(${customer.id}) for ${user.email}`);
-        } catch (e: any) {
-          logger.info(`Link for ${user.email}: ${e.message}`);
-        }
+      if (registerResult.success && registerResult.authIdentity) {
+        const authIdentityId = registerResult.authIdentity.id;
+        logger.info(`Registered auth for ${user.email}: ${authIdentityId}`);
+
+        // Link auth identity to customer via app_metadata.customer_id
+        await authModuleService.updateAuthIdentities({
+          id: authIdentityId,
+          app_metadata: { customer_id: customer.id },
+        });
+        logger.info(`Linked auth(${authIdentityId}) → customer(${customer.id}) for ${user.email}`);
       } else {
-        logger.info(`WARNING: No auth identity for ${user.email}, cannot create link!`);
+        logger.info(`Register FAILED for ${user.email}: ${registerResult.error}`);
       }
     } catch (error: any) {
       logger.info(`Error with test user ${user.email}: ${error.message}`);
