@@ -309,13 +309,9 @@ export default function GuidePage() {
         </h1>
         <p className="text-ui-fg-subtle text-lg leading-relaxed">
           ZotoShop est une application e-commerce conçue pour la{" "}
-          <strong>pratique de l&apos;automatisation de test</strong>. Inspirée de{" "}
-          <span className="font-mono text-sm bg-gray-100 px-1 rounded">
-            saucedemo.com
-          </span>
-          , elle propose des comptes de test avec des comportements spéciaux, des
-          formulaires complets, des codes promo simulés et une API REST
-          complète.
+          <strong>pratique de l&apos;automatisation de test</strong>. Elle propose
+          des comptes de test avec des comportements spéciaux, des formulaires
+          complets, des codes promo simulés et une API REST complète.
         </p>
         <p className="text-ui-fg-subtle mt-2">
           Développée par{" "}
