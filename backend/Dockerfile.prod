@@ -11,8 +11,8 @@ RUN corepack enable && yarn install
 # Copier le code source
 COPY . .
 
-# Build Medusa
-RUN npx medusa build
+# Build Medusa sans admin dashboard (économise RAM + évite l'erreur index.html)
+RUN npx medusa build --admin-only=false
 
 # ─── Production stage ─────────────────────────
 FROM node:20-alpine
