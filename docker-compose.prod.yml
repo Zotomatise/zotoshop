@@ -1,0 +1,98 @@
+###############################################
+# ZotoShop — docker-compose.prod.yml (VPS)
+# Déploiement hybride : ce compose porte le BACKEND uniquement
+# (Medusa + Postgres + Redis + assistant IA). La vitrine Next.js va sur Vercel.
+#
+# Exposition publique via Caddy :
+#   api.zotoshop.zotomatise.com       -> localhost:9000 (backend Medusa)
+#   assistant.zotoshop.zotomatise.com -> localhost:8100 (assistant FastAPI)
+#
+# Postgres et Redis restent internes (pas de port hôte) pour ne pas entrer en
+# conflit avec les autres services du VPS (n8n, WAHA, ZotoBank).
+#
+# Usage VPS :
+#   cd /opt/zotoshop
+#   docker compose -f docker-compose.prod.yml up -d --build
+###############################################
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zotoshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zotoshop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zotoshop}
+      POSTGRES_DB: zotoshop
+    volumes:
+      - zotoshop_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zotoshop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: zotoshop-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: zotoshop-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://zotoshop:${POSTGRES_PASSWORD:-zotoshop}@postgres:5432/zotoshop?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      STORE_CORS: https://zotoshop.zotomatise.com
+      ADMIN_CORS: https://api.zotoshop.zotomatise.com
+      AUTH_CORS: https://zotoshop.zotomatise.com,https://api.zotoshop.zotomatise.com
+      JWT_SECRET: ${JWT_SECRET:?defini-le-dans-.env}
+      COOKIE_SECRET: ${COOKIE_SECRET:?defini-le-dans-.env}
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:9000:9000"   # Caddy seul y accede
+
+  assistant-ia:
+    build:
+      context: ./assistant-ia
+      dockerfile: Dockerfile
+    container_name: zotoshop-assistant
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      ZOTO_LLM: ${ZOTO_LLM:-claude}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      MEDUSA_BACKEND_URL: http://backend:9000
+      CHROMA_PERSIST_DIR: /data/chroma
+      ASSISTANT_TEMPERATURE: ${ASSISTANT_TEMPERATURE:-0.9}
+      GUARDRAIL_SYSTEM_PROMPT_LEAK: ${GUARDRAIL_SYSTEM_PROMPT_LEAK:-off}
+      GUARDRAIL_INJECTION_FILTER: ${GUARDRAIL_INJECTION_FILTER:-off}
+      GUARDRAIL_RAG_SANITIZE: ${GUARDRAIL_RAG_SANITIZE:-off}
+      GUARDRAIL_GROUNDING_STRICT: ${GUARDRAIL_GROUNDING_STRICT:-off}
+      GUARDRAIL_PII_REDACT: ${GUARDRAIL_PII_REDACT:-off}
+      GUARDRAIL_AUTHZ_ORDER: ${GUARDRAIL_AUTHZ_ORDER:-off}
+    ports:
+      - "127.0.0.1:8100:8100"   # Caddy seul y accede
+    volumes:
+      - ./assistant-ia/app:/app/app
+      - ./assistant-ia/knowledge:/app/knowledge
+      - zotoshop_chroma:/data/chroma
+
+volumes:
+  zotoshop_pgdata:
+  zotoshop_chroma:

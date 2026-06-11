@@ -1,0 +1,15 @@
+{
+  "name": "zotoshop-assistant-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tests de reference Playwright (TS) pour ZotoShop Assistant",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test assistant.api.spec.ts",
+    "test:e2e": "playwright test assistant.e2e.spec.ts",
+    "test:secu": "playwright test assistant.secu.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
