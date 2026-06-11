@@ -530,7 +530,7 @@ export default function GuidePage() {
         </h2>
         <p className="text-ui-fg-subtle mb-4">
           Tous les éléments interactifs ont un attribut{" "}
-          <code className="bg-gray-100 px-1 rounded font-mono text-xs">
+          <code className="bg-zoto-surface text-zoto-cyan px-1 rounded font-mono text-xs">
             data-testid
           </code>{" "}
           pour faciliter l&apos;automatisation. Exemples :
@@ -568,7 +568,7 @@ export default function GuidePage() {
           ].map((id) => (
             <div
               key={id}
-              className="bg-gray-50 px-3 py-1.5 rounded border border-ui-border-base"
+              className="bg-zoto-surface text-zoto-cyan px-3 py-1.5 rounded border border-ui-border-base"
             >
               {id}
             </div>
