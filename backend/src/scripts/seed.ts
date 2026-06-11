@@ -658,14 +658,27 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [{ id: defaultSalesChannel[0].id }],
         },
-      ].map((p) => ({
-        // Miniature placeholder brandee Zotomatise, derivee du titre du produit.
-        // (catalogue de demo sans vraies photos ; evite les images vides en vitrine)
-        thumbnail: `https://placehold.co/600x600/111827/22d3ee.png?text=${encodeURIComponent(
-          p.title
-        ).replace(/%20/g, "+")}`,
-        ...p,
-      })),
+      ].map((p) => {
+        // Vraies photos tech (Unsplash) par produit, pour thumbnail + galerie.
+        const PHOTOS: Record<string, string> = {
+          "zotophone-pro-15": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80",
+          "zotophone-lite": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=600&q=80",
+          "zotobook-air-14": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=600&q=80",
+          "zotobook-pro-16": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=600&q=80",
+          "zotocoque": "https://images.unsplash.com/photo-1601593346740-925612772716?auto=format&fit=crop&w=600&q=80",
+          "zotocharge-65w": "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=600&q=80",
+          "cable-zotolink": "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=600&q=80",
+          "zotobuds-pro": "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?auto=format&fit=crop&w=600&q=80",
+          "zotospeaker-boom": "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=600&q=80",
+          "zotopad-controller": "https://images.unsplash.com/photo-1592840496694-26d035b52b48?auto=format&fit=crop&w=600&q=80",
+          "zotoscreen-27": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=600&q=80",
+          "zotomouse-precision": "https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=600&q=80",
+        }
+        const url =
+          PHOTOS[p.handle] ||
+          `https://placehold.co/600x600/111827/22d3ee.png?text=${encodeURIComponent(p.title).replace(/%20/g, "+")}`
+        return { thumbnail: url, images: [{ url }], ...p }
+      }),
     },
   });
   logger.info("Finished seeding ZotoShop product data.");
