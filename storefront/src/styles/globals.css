@@ -38,6 +38,31 @@
   }
 }
 
+/* ─── Mode sombre : surfaces/textes clairs en dur -> charte ─────────── */
+/* Corrige les ilots blancs (bg-white) et textes sombres devenus illisibles */
+html.dark .bg-white {
+  background-color: #0a0a14 !important;
+}
+html.dark .bg-grey-5,
+html.dark .bg-grey-10 {
+  background-color: #0d0f17 !important;
+}
+html.dark .bg-grey-20 {
+  background-color: #11131f !important;
+}
+html.dark .text-grey-90,
+html.dark .text-grey-80,
+html.dark .text-black {
+  color: #e8e8f0 !important;
+}
+html.dark .text-grey-70,
+html.dark .text-grey-60 {
+  color: #a8a8b8 !important;
+}
+html.dark .border-grey-20 {
+  border-color: #1e2030 !important;
+}
+
 @layer utilities {
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
