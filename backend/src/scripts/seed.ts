@@ -658,7 +658,14 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [{ id: defaultSalesChannel[0].id }],
         },
-      ],
+      ].map((p) => ({
+        // Miniature placeholder brandee Zotomatise, derivee du titre du produit.
+        // (catalogue de demo sans vraies photos ; evite les images vides en vitrine)
+        thumbnail: `https://placehold.co/600x600/030308/22d3ee.png?text=${encodeURIComponent(
+          p.title
+        ).replace(/%20/g, "+")}`,
+        ...p,
+      })),
     },
   });
   logger.info("Finished seeding ZotoShop product data.");
