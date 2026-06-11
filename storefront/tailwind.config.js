@@ -34,6 +34,14 @@ module.exports = {
           80: "#1F2937",
           90: "#111827",
         },
+        // Charte Zotomatise
+        zoto: {
+          bg: "#030308",
+          surface: "#0a0a14",
+          border: "#1e2030",
+          cyan: "#22D3EE",
+          gold: "#FFD700",
+        },
       },
       borderRadius: {
         none: "0px",
@@ -60,6 +68,7 @@ module.exports = {
       },
       fontFamily: {
         sans: [
+          "var(--font-inter)",
           "Inter",
           "-apple-system",
           "BlinkMacSystemFont",
@@ -69,6 +78,8 @@ module.exports = {
           "Ubuntu",
           "sans-serif",
         ],
+        display: ["var(--font-bebas)", "Bebas Neue", "Impact", "sans-serif"],
+        mono: ["var(--font-jetbrains)", "JetBrains Mono", "monospace"],
       },
       keyframes: {
         ring: {
