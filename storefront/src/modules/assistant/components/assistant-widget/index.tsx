@@ -3,7 +3,7 @@
 // ZotoShop Assistant — widget de chat (charte Zotomatise).
 // Bulle flottante + panneau. Appelle /api/assistant (proxy -> service Python).
 // data-testid poses pour les tests Playwright.
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Source = { doc: string; chunk: number; score: number; sensitive: boolean }
 type Msg = { role: "user" | "bot"; text: string; sources?: Source[] }
@@ -25,7 +25,23 @@ export default function AssistantWidget() {
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [apiKey, setApiKey] = useState("")
+  const [showKey, setShowKey] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+
+  // Bring Your Own Key : la clé reste dans le navigateur (localStorage), jamais sur le serveur.
+  useEffect(() => {
+    const k = typeof window !== "undefined" ? localStorage.getItem("zoto_assistant_key") : null
+    if (k) setApiKey(k)
+  }, [])
+
+  const saveKey = (k: string) => {
+    setApiKey(k)
+    if (typeof window !== "undefined") {
+      if (k) localStorage.setItem("zoto_assistant_key", k)
+      else localStorage.removeItem("zoto_assistant_key")
+    }
+  }
 
   const send = async () => {
     const text = input.trim()
@@ -40,7 +56,7 @@ export default function AssistantWidget() {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: text, history, api_key: apiKey || undefined }),
       })
       const data = await res.json()
       setMessages((m) => [...m, { role: "bot", text: data.answer, sources: data.sources }])
@@ -93,15 +109,53 @@ export default function AssistantWidget() {
         <span style={{ fontWeight: 700, letterSpacing: 0.5, color: COLORS.cyan }}>
           ZotoShop Assistant
         </span>
-        <button
-          data-testid="assistant-close"
-          onClick={() => setOpen(false)}
-          aria-label="Fermer"
-          style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", fontSize: 20 }}
-        >
-          ×
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            data-testid="assistant-settings"
+            onClick={() => setShowKey((v) => !v)}
+            aria-label="Ma cle IA"
+            title="Ma cle IA"
+            style={{ background: "none", border: "none", color: apiKey ? COLORS.cyan : COLORS.gold, cursor: "pointer", fontSize: 16 }}
+          >
+            ⚙
+          </button>
+          <button
+            data-testid="assistant-close"
+            onClick={() => setOpen(false)}
+            aria-label="Fermer"
+            style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", fontSize: 20 }}
+          >
+            ×
+          </button>
+        </div>
       </div>
+
+      {/* Panneau cle IA (BYOK) */}
+      {showKey && (
+        <div style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}`, background: COLORS.panel }}>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 6 }}>
+            Ta clé Anthropic (reste dans ton navigateur, jamais envoyée au serveur).
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              data-testid="assistant-key-input"
+              type="password"
+              value={apiKey}
+              onChange={(e) => saveKey(e.target.value)}
+              placeholder="sk-ant-..."
+              autoComplete="off"
+              style={{ flex: 1, padding: "7px 10px", borderRadius: 8, fontSize: 13, background: COLORS.bg, border: `1px solid ${COLORS.border}`, color: COLORS.text, outline: "none" }}
+            />
+            <button
+              data-testid="assistant-key-clear"
+              onClick={() => saveKey("")}
+              style={{ padding: "0 10px", borderRadius: 8, border: `1px solid ${COLORS.border}`, background: "transparent", color: COLORS.muted, cursor: "pointer", fontSize: 12 }}
+            >
+              Effacer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>

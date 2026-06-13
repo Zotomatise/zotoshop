@@ -3,11 +3,28 @@
 C'est l'objet central enseigne des M1.L3. ZOTO_LLM=claude -> Anthropic API.
 ZOTO_LLM=ollama -> modele local. L'assistant l'utilise tel quel.
 """
+import contextvars
 from typing import Iterator
 
 import httpx
 
 from . import config
+
+# Cle API "par requete" (Bring Your Own Key) : posee depuis la requete du client
+# (widget) au debut de chaque appel. Repli sur la cle d'environnement.
+_api_key_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("api_key", default=None)
+
+
+def set_request_api_key(key: str | None):
+    _api_key_var.set(key or None)
+
+
+def effective_api_key() -> str:
+    return _api_key_var.get() or config.ANTHROPIC_API_KEY
+
+
+def has_usable_key() -> bool:
+    return config.ZOTO_LLM == "ollama" or bool(effective_api_key())
 
 
 class AskResult:
@@ -48,7 +65,7 @@ def ask(
 def _ask_claude(messages, system, temperature, stream, max_tokens):
     from anthropic import Anthropic
 
-    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    client = Anthropic(api_key=effective_api_key())
     kwargs = dict(
         model=config.ANTHROPIC_MODEL,
         max_tokens=max_tokens,

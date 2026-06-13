@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from . import assistant, config, rag, tools
+from . import assistant, config, llm, rag, tools
 
 app = FastAPI(title="ZotoShop Assistant", version="1.0")
 
@@ -27,6 +27,14 @@ class ChatBody(BaseModel):
     message: str
     history: list[dict] | None = None
     requester_email: str | None = None
+    api_key: str | None = None  # Bring Your Own Key (clé de l'eleve, jamais stockee)
+
+
+def _no_key_response():
+    return {"answer": "Aucune cle IA configuree. Cliquez sur l'engrenage du widget "
+                      "pour renseigner votre cle Anthropic (elle reste dans votre navigateur).",
+            "sources": [], "usage": {"input_tokens": 0, "output_tokens": 0},
+            "latency_ms": 0, "model": assistant._current_model(), "no_key": True}
 
 
 @app.get("/api/health")
@@ -47,14 +55,31 @@ def get_config():
 
 @app.post("/api/chat")
 def chat(body: ChatBody):
-    return assistant.answer(body.message, history=body.history)
+    llm.set_request_api_key(body.api_key)
+    if not llm.has_usable_key():
+        return _no_key_response()
+    try:
+        return assistant.answer(body.message, history=body.history)
+    except Exception as e:
+        return {"answer": "Erreur lors de l'appel a l'IA. Verifiez votre cle Anthropic "
+                          f"(engrenage du widget). [{type(e).__name__}]",
+                "sources": [], "usage": {"input_tokens": 0, "output_tokens": 0},
+                "latency_ms": 0, "model": assistant._current_model(), "error": True}
 
 
 @app.post("/api/chat/stream")
 def chat_stream(body: ChatBody):
+    llm.set_request_api_key(body.api_key)
     def event_stream():
-        for piece in assistant.answer_stream(body.message, history=body.history):
-            yield f"data: {piece}\n\n"
+        if not llm.has_usable_key():
+            yield f"data: {_no_key_response()['answer']}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+        try:
+            for piece in assistant.answer_stream(body.message, history=body.history):
+                yield f"data: {piece}\n\n"
+        except Exception as e:
+            yield f"data: Erreur IA (verifiez votre cle). [{type(e).__name__}]\n\n"
         yield "data: [DONE]\n\n"
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
