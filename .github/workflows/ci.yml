@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  assistant-ia:
+    name: Assistant IA — build + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & run du service assistant-ia
+        run: |
+          docker build -t zotoshop-assistant ./assistant-ia
+          docker run -d -p 8100:8100 --name assistant \
+            -e ZOTO_LLM=claude -e ANTHROPIC_API_KEY= \
+            -e GUARDRAIL_INJECTION_FILTER=off -e GUARDRAIL_RAG_SANITIZE=off \
+            zotoshop-assistant
+
+      - name: Attendre que l'assistant reponde
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fs -o /dev/null http://localhost:8100/api/health; then
+              echo "Assistant UP"; exit 0
+            fi
+            sleep 3
+          done
+          echo "Assistant non disponible"; docker logs assistant; exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer Playwright
+        working-directory: assistant-ia/tests
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      # api + secu sont deterministes et tournent SANS cle (contrat no_key + RAG).
+      # L'e2e (widget) necessite le storefront -> couvert ailleurs.
+      - name: Lancer les tests (contrat API + securite)
+        working-directory: assistant-ia/tests
+        env:
+          ASSISTANT_API: http://localhost:8100
+        run: npx playwright test assistant.api.spec.ts assistant.secu.spec.ts --reporter=line
+
+      - name: Logs de l'assistant si echec
+        if: failure()
+        run: docker logs assistant

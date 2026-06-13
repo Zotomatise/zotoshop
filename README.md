@@ -1,5 +1,7 @@
 # ZotoShop
 
+[![CI](https://github.com/Zotomatise/zotoshop/actions/workflows/ci.yml/badge.svg)](https://github.com/Zotomatise/zotoshop/actions/workflows/ci.yml)
+
 Application e-commerce de test pour la formation **QA Automaticien 2.0** de [Zotomatise Labs](https://zotomatise.com).
 
 ## Architecture

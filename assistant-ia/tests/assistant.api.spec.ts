@@ -22,8 +22,9 @@ test.describe("ZotoShop Assistant - contrat API", () => {
     expect(body).toHaveProperty("answer")
     expect(body).toHaveProperty("sources")
     expect(Array.isArray(body.sources)).toBeTruthy()
-    // la reponse doit citer au moins un document du corpus
-    expect(body.sources.length).toBeGreaterThan(0)
+    // Avec une cle, la reponse est ancree sur des sources du corpus.
+    // Sans cle (CI / demo), l'assistant renvoie le contrat no_key (BYOK).
+    if (!body.no_key) expect(body.sources.length).toBeGreaterThan(0)
   })
 
   test("search renvoie un retrieval classe par score", async () => {
