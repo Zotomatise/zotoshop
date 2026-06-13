@@ -1,8 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  push:        # tout push, toute branche (a chaque commit pousse)
   pull_request:
   workflow_dispatch:
 
